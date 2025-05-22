@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Realtime Voice Sensor</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 30px;
+      background: #f0f0f0;
+    }
+    h1 {
+      color: #333;
+    }
+    #status {
+      font-size: 24px;
+      font-weight: bold;
+      color: green;
+      margin: 20px 0;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <h1></h1> Voice Sensor</h1>
+  <p id="status">Waiting for voice...</p>
+  <canvas id="volumeCanvas" width="300" height="100"></canvas>
+
+  <script>
+    const statusText = document.getElementById('status');
+    const canvas = document.getElementById('volumeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(stream => {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        source.connect(analyser);
+
+        function detectVolume() {
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+
+          let average = sum / dataArray.length;
+
+          // Update status text based on volume
+          if (average > 20) {
+            statusText.textContent = "🎤 Voice Detected!";
+            statusText.style.color = "red";
+          } else {
+            statusText.textContent = "Waiting for voice...";
+            statusText.style.color = "green";
+          }
+
+          // Draw volume bar
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#4caf50";
+          ctx.fillRect(0, canvas.height - average, canvas.width, average);
+
+          requestAnimationFrame(detectVolume);
+        }
+
+        detectVolume();
+      })
+      .catch(error => {
+        statusText.textContent = "Microphone access denied.";
+        console.error("Error accessing microphone:", error);
+      });
+  </script>
+
+</body>
+</html>
